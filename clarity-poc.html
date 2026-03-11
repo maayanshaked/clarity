@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLARITY — Your Personal Financial Mentor</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D1117;
+    --card: #161B22;
+    --border: #30363D;
+    --green: #3FB950;
+    --red: #F85149;
+    --blue: #1F6FEB;
+    --text: #E6EDF3;
+    --muted: #8B949E;
+    --dark-red: #3D1A1A;
+    --dark-green: #1A3D2A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    height: 56px;
+    background: #010409;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 32px;
+    position: relative;
+    z-index: 10;
+  }
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--blue);
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .logo-star { color: var(--blue); font-size: 14px; }
+  .nav { display: flex; gap: 24px; margin-left: 8px; }
+  .nav a {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav a.active, .nav a:hover { color: var(--text); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .bell { font-size: 16px; cursor: pointer; color: var(--muted); }
+  .avatar {
+    width: 30px; height: 30px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: #3D1A1A;
+    border-left: 3px solid var(--red);
+    padding: 10px 24px;
+    font-size: 13px;
+    color: #FFB3B3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .alert-banner a { color: var(--blue); cursor: pointer; text-decoration: underline; margin-left: 8px; }
+
+  /* ── LAYOUT ── */
+  .dashboard {
+    display: flex;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+  .dashboard.with-banner { height: calc(100vh - 56px - 40px); }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 280px;
+    min-width: 280px;
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .portfolio-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .portfolio-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .portfolio-value { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 600; margin-bottom: 4px; }
+  .portfolio-change { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .positive { color: var(--green); }
+  .negative { color: var(--red); }
+
+  .holdings-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .holding-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .holding-row:last-child { border-bottom: none; }
+  .holding-bar-wrap { width: 3px; height: 28px; background: var(--border); border-radius: 2px; position: relative; }
+  .holding-bar { position: absolute; bottom: 0; left: 0; width: 3px; border-radius: 2px; background: var(--blue); }
+  .holding-info { flex: 1; }
+  .holding-name { font-size: 12px; font-weight: 500; }
+  .holding-pct { font-size: 11px; color: var(--muted); }
+  .holding-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  /* ── MAIN AREA ── */
+  .main-area {
+    flex: 1;
+    padding: 24px;
+    overflow: hidden;
+    position: relative;
+  }
+  .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .chart-title { font-size: 13px; color: var(--muted); }
+  .chart-period { display: flex; gap: 6px; }
+  .period-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .period-btn.active { background: var(--card); color: var(--text); border-color: var(--blue); }
+
+  /* ── SVG CHART ── */
+  .chart-wrap { width: 100%; height: calc(100vh - 230px); position: relative; }
+  svg.chart { width: 100%; height: 100%; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+  }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--red);
+    border-radius: 12px;
+    padding: 24px;
+    width: 340px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal-icon { font-size: 20px; margin-bottom: 12px; }
+  .modal-title { font-size: 15px; font-weight: 600; color: var(--red); margin-bottom: 8px; }
+  .modal-body { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+  .modal-question { font-size: 13px; color: var(--text); margin-bottom: 16px; }
+  .modal-btns { display: flex; gap: 8px; }
+  .btn-ghost {
+    flex: 1; padding: 9px; border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    font-size: 13px; cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: border-color 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--muted); }
+  .btn-primary {
+    flex: 1.5; padding: 9px; border-radius: 6px;
+    border: none; background: var(--blue); color: #fff;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+
+  /* ── SIDEBAR ── */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+  .sidebar {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 420px;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    z-index: 40;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .sidebar-logo { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: var(--blue); }
+  .sidebar-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sidebar-close {
+    width: 28px; height: 28px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+  .sidebar-close:hover { color: var(--text); }
+  .sidebar-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ── CHAT ── */
+  .chat-bubble {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    animation: fadeUp 0.3s ease;
+  }
+  .chat-bubble.user {
+    background: var(--blue);
+    border-color: var(--blue);
+    align-self: flex-end;
+    max-width: 80%;
+    font-weight: 500;
+  }
+  .chat-bubble.hidden { display: none; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .sender { font-size: 10px; color: var(--blue); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+
+  .stat-card {
+    border-radius: 8px;
+    padding: 12px 14px;
+    border-left: 3px solid;
+    font-size: 13px;
+    line-height: 1.5;
+    animation: fadeUp 0.3s ease;
+  }
+  .stat-card.red { background: var(--dark-red); border-color: var(--red); }
+  .stat-card.green { background: var(--dark-green); border-color: var(--green); }
+  .stat-card.blue { background: #0F1F3D; border-color: var(--blue); }
+  .stat-card .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .stat-card.red .stat-label { color: var(--red); }
+  .stat-card.green .stat-label { color: var(--green); }
+  .stat-card.blue .stat-label { color: var(--blue); }
+  .stat-card .stat-main { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .stat-card .stat-sub { font-size: 12px; color: var(--muted); }
+
+  .chips { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .chip {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: 'IBM Plex Sans', sans-serif;
+    text-align: left;
+  }
+  .chip:hover { border-color: var(--blue); background: #0F1F3D; }
+
+  .btn-full {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-full:hover { opacity: 0.88; }
+  .btn-full.green { background: var(--green); color: #0D1117; }
+
+  .recommendation {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  .recommendation:last-child { border-bottom: none; }
+  .rec-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .rec-text { line-height: 1.5; }
+  .rec-sub { font-size: 11px; color: var(--muted); }
+
+  /* ── SCREEN 5 CONFIRM ── */
+  .confirm-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 20px 20px;
+    text-align: center;
+    gap: 12px;
+  }
+  .confirm-icon {
+    width: 64px; height: 64px;
+    background: var(--dark-green);
+    border: 2px solid var(--green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes pop {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .confirm-title { font-size: 18px; font-weight: 600; color: var(--green); }
+  .confirm-body { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 320px; }
+  .confirm-quote {
+    font-style: italic;
+    font-size: 12px;
+    color: var(--muted);
+    border-left: 2px solid var(--border);
+    padding-left: 12px;
+    text-align: left;
+    line-height: 1.7;
+    max-width: 320px;
+  }
+  .confirm-stat {
+    font-size: 12px;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--dark-green);
+    border-radius: 20px;
+    border: 1px solid var(--green);
+    margin-top: 8px;
+  }
+
+  /* ── SCREEN 6 CLOSING ── */
+  #screen6 {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .closing-wrap { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .closing-logo { font-family: 'IBM Plex Mono', monospace; font-size: 36px; font-weight: 600; color: var(--blue); letter-spacing: 0.1em; }
+  .closing-tagline { font-size: 16px; color: var(--text); font-weight: 300; }
+  .closing-lines { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+  .closing-line { font-size: 14px; color: var(--muted); }
+  .closing-cta {
+    margin-top: 12px;
+    padding: 14px 36px;
+    background: var(--blue);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: opacity 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .closing-cta:hover { opacity: 0.88; }
+
+  /* ── PROGRESS ── */
+  .progress-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 100;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--blue);
+    transition: width 0.4s ease;
+  }
+  .screen-indicator {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 100;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, width 0.3s;
+  }
+  .dot.active { background: var(--blue); width: 18px; border-radius: 3px; }
+
+  /* ── PULSE ON RED ── */
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(248,81,73,0); }
+  }
+  .pulse { animation: pulse-red 2s infinite; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .hist-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+  .hist-item {
+    display: flex; justify-content: space-between;
+    font-size: 12px; padding: 5px 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    border-left: 2px solid var(--border);
+  }
+  .hist-item .hi-date { color: var(--muted); }
+  .hist-item .hi-val { color: var(--red); font-family: 'IBM Plex Mono', monospace; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 1 — Normal Dashboard
+═══════════════════════════════════════════ -->
+<div id="screen1" class="screen active">
+  <div class="header">
+    <div class="logo"><span class="logo-star">✦</span> CLARITY</div>
+    <nav class="nav">
+      <a class="active">Portfolio</a>
+      <a>Markets</a>
+      <a>History</a>
+      <a>Insights</a>
+    </nav>
+    <div class="header-right">
+      <span class="bell">🔔</span>
+      <div class="avatar">Y</div>
+    </div>
+  </div>
+  <div class="dashboard">
+    <div class="left-panel">
+      <div>
+        <div class="portfolio-label">Total Portfolio Value</div>
+        <div class="portfolio-card">
+          <div class="portfolio-value">₪312,450</div>
+          <div class="portfolio-change positive">▲ ₪2,340 (+0.75%) Today</div>
+        </div>
+      </div>
+      <div>
+        <div class="holdings-title">Holdings</div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:100%;background:#1F6FEB"></div></div>
+          <div class="holding-info"><div class="holding-name">S&P 500 ETF</div><div class="holding-pct">45%</div></div>
+          <div class="holding-val">₪140,602</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:56%;background:#58A6FF"></div></div>
+          <div class="holding-info"><div class="holding-name">NASDAQ ETF</div><div class="holding-pct">25%</div></div>
+          <div class="holding-val">₪78,112</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:33%;background:#3FB950"></div></div>
+          <div class="holding-info"><div class="holding-name">Tel Aviv 125</div><div class="holding-pct">15%</div></div>
+          <div class="holding-val">₪46,867</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:22%;background:#D29922"></div></div>
+          <div class="holding-info"><div class="holding-name">Stocks</div><div class="holding-pct">10%</div></div>
+          <div class="holding-val">₪31,245</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:11%;background:#8B949E"></div></div>
+          <div class="holding-info"><div class="holding-name">Cash</div><div class="holding-pct">5%</div></div>
+          <div class="holding-val">₪15,622</div>
+        </div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="chart-header">
+        <div class="chart-title">Portfolio Performance — 12 Months</div>
+        <div class="chart-period">
+          <button class="period-btn">1M</button>
+          <button class="period-btn">3M</button>
+          <button class="period-btn">6M</button>
+          <button class="period-btn active">1Y</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" viewBox="0 0 900 380" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGrad1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1F6FEB" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#1F6FEB" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="0" y1="80" x2="900" y2="80" stroke="#30363D" stroke-width="0.5"/>
+          <line x1="0" y1="160" x2="900" y2="160" stroke="#30363D" stroke-width="0.5"/>
+          <line x1="0" y1="240" x2="900" y2="240" stroke="#30363D" stroke-width="0.5"/>
+          <line x1="0" y1="320" x2="900" y2="320" stroke="#30363D" stroke-width="0.5"/>
+          <!-- Y labels -->
+          <text x="4" y="78" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">320K</text>
+          <text x="4" y="158" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">300K</text>
+          <text x="4" y="238" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">280K</text>
+          <text x="4" y="318" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">260K</text>
+          <!-- X labels -->
+          <text x="50" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Mar</text>
+          <text x="120" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Apr</text>
+          <text x="190" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">May</text>
+          <text x="265" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Jun</text>
+          <text x="335" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Jul</text>
+          <text x="405" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Aug</text>
+          <text x="475" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Sep</text>
+          <text x="545" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Oct</text>
+          <text x="615" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Nov</text>
+          <text x="685" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Dec</text>
+          <text x="755" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Jan</text>
+          <text x="825" y="368" fill="#8B949E" font-size="10" font-family="IBM Plex Sans">Feb</text>
+          <!-- Fill area -->
+          <path d="M40,290 C80,280 100,260 140,250 C180,240 200,255 240,245 C280,235 310,210 350,200 C390,190 410,205 450,195 C490,185 510,165 550,155 C590,145 620,160 660,145 C700,130 730,120 770,110 C810,100 840,100 880,95 L880,340 L40,340 Z" fill="url(#chartGrad1)"/>
+          <!-- Chart line -->
+          <path d="M40,290 C80,280 100,260 140,250 C180,240 200,255 240,245 C280,235 310,210 350,200 C390,190 410,205 450,195 C490,185 510,165 550,155 C590,145 620,160 660,145 C700,130 730,120 770,110 C810,100 840,100 880,95" fill="none" stroke="#1F6FEB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- End dot -->
+          <circle cx="880" cy="95" r="4" fill="#1F6FEB"/>
+          <circle cx="880" cy="95" r="8" fill="#1F6FEB" fill-opacity="0.2"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <!-- Auto-transition to screen 2 -->
+  <script>setTimeout(() => goTo(2), 3000);</script>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 2 — Crisis Dashboard
+═══════════════════════════════════════════ -->
+<div id="screen2" class="screen">
+  <div class="header">
+    <div class="logo"><span class="logo-star">✦</span> CLARITY</div>
+    <nav class="nav">
+      <a class="active">Portfolio</a><a>Markets</a><a>History</a><a>Insights</a>
+    </nav>
+    <div class="header-right">
+      <span class="bell" style="color:#F85149">🔔</span>
+      <div class="avatar">Y</div>
+    </div>
+  </div>
+  <div class="alert-banner">
+    <span>⚠️</span>
+    <span>Your portfolio dropped <strong>15%</strong> in the last 3 days — Clarity detected a historical pattern</span>
+    <a onclick="openSidebar()">View Analysis →</a>
+  </div>
+  <div class="dashboard with-banner">
+    <div class="left-panel">
+      <div>
+        <div class="portfolio-label">Total Portfolio Value</div>
+        <div class="portfolio-card" style="border-color:#F85149; background:#1A0A0A;">
+          <div class="portfolio-value" style="color:#E6EDF3;">₪265,582</div>
+          <div class="portfolio-change negative">▼ ₪46,868 (−15.0%) Last 3 days</div>
+        </div>
+      </div>
+      <div>
+        <div class="holdings-title">Holdings</div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:100%;background:#1F6FEB"></div></div>
+          <div class="holding-info"><div class="holding-name">S&P 500 ETF</div><div class="holding-pct">45%</div></div>
+          <div class="holding-val negative">₪119,511</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:56%;background:#58A6FF"></div></div>
+          <div class="holding-info"><div class="holding-name">NASDAQ ETF</div><div class="holding-pct">25%</div></div>
+          <div class="holding-val negative">₪66,395</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:33%;background:#3FB950"></div></div>
+          <div class="holding-info"><div class="holding-name">Tel Aviv 125</div><div class="holding-pct">15%</div></div>
+          <div class="holding-val negative">₪39,837</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:22%;background:#D29922"></div></div>
+          <div class="holding-info"><div class="holding-name">Stocks</div><div class="holding-pct">10%</div></div>
+          <div class="holding-val negative">₪26,558</div>
+        </div>
+        <div class="holding-row">
+          <div class="holding-bar-wrap"><div class="holding-bar" style="height:11%;background:#8B949E"></div></div>
+          <div class="holding-info"><div class="holding-name">Cash</div><div class="holding-pct">5%</div></div>
+          <div class="holding-val">₪13,279</div>
+        </div>
+      </div>
+    </div>
+    <div class="main-area">
+      <div class="chart-header">
+        <div class="chart-title">Portfolio Performance — 12 Months</div>
+        <div class="chart-period">
+          <button class="period-btn">1M</button><button class="period-btn">3M</button>
+          <button class="period-btn">6M</button><button class="period-btn active">1Y</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart" viewBox="0 0 900 380" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGrad2a" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1F6FEB" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#1F6FEB" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="chartGrad2b" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F85149" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#F85149" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="80" x2="900" y2="80" stroke="#30363D" stroke-width="0.5"/>
+          <line x1="0" y1="160" x2="900" y2="160" stroke="#30363D" stroke-width="0.5"/>
+          <line x1="0" y1="240" x2="900" y2="240" stroke="#30363D" stroke-width="0.5"/>
+          <line x1="0" y1="320" x2="900" y2="320" stroke="#30363D" stroke-width="0.5"/>
+          <text x="4" y="78" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">320K</text>
+          <text x="4" y="158" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">300K</text>
+          <text x="4" y="238" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">280K</text>
+          <text x="4" y="318" fill="#8B949E" font-size="10" font-family="IBM Plex Mono">260K</text>
+          <text x="50" y="368" fill="#8B949E" font-size="10">Mar</text>
+          <text x="120" y="368" fill="#8B949E" font-size="10">Apr</text>
+          <text x="190" y="368" fill="#8B949E" font-size="10">May</text>
+          <text x="265" y="368" fill="#8B949E" font-size="10">Jun</text>
+          <text x="335" y="368" fill="#8B949E" font-size="10">Jul</text>
+          <text x="405" y="368" fill="#8B949E" font-size="10">Aug</text>
+          <text x="475" y="368" fill="#8B949E" font-size="10">Sep</text>
+          <text x="545" y="368" fill="#8B949E" font-size="10">Oct</text>
+          <text x="615" y="368" fill="#8B949E" font-size="10">Nov</text>
+          <text x="685" y="368" fill="#8B949E" font-size="10">Dec</text>
+          <text x="755" y="368" fill="#8B949E" font-size="10">Jan</text>
+          <text x="825" y="368" fill="#8B949E" font-size="10">Feb</text>
+          <!-- Normal portion fill -->
+          <path d="M40,290 C80,280 100,260 140,250 C180,240 200,255 240,245 C280,235 310,210 350,200 C390,190 410,205 450,195 C490,185 510,165 550,155 C590,145 620,160 660,145 C700,130 730,120 770,110 L770,340 L40,340 Z" fill="url(#chartGrad2a)"/>
+          <!-- Drop fill -->
+          <path d="M770,110 C800,108 830,100 850,115 C860,122 870,165 880,215 L880,340 L770,340 Z" fill="url(#chartGrad2b)"/>
+          <!-- Normal line -->
+          <path d="M40,290 C80,280 100,260 140,250 C180,240 200,255 240,245 C280,235 310,210 350,200 C390,190 410,205 450,195 C490,185 510,165 550,155 C590,145 620,160 660,145 C700,130 730,120 770,110" fill="none" stroke="#1F6FEB" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Drop line -->
+          <path d="M770,110 C800,108 830,100 850,115 C860,122 870,165 880,215" fill="none" stroke="#F85149" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- End dot (red) -->
+          <circle cx="880" cy="215" r="5" fill="#F85149" class="pulse"/>
+          <circle cx="880" cy="215" r="10" fill="#F85149" fill-opacity="0.15"/>
+          <!-- Drop label -->
+          <rect x="810" y="145" width="72" height="22" rx="4" fill="#3D1A1A" stroke="#F85149" stroke-width="0.8"/>
+          <text x="846" y="160" fill="#F85149" font-size="11" font-family="IBM Plex Mono" text-anchor="middle">−15%</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal2">
+    <div class="modal pulse">
+      <div class="modal-icon">⚠️</div>
+      <div class="modal-title">Unusual Activity Detected</div>
+      <div class="modal-body">3 sell attempts were recorded in the last 24 hours — all stopped by you.</div>
+      <div class="modal-question">Would you like to consult Clarity before making a decision?</div>
+      <div class="modal-btns">
+        <button class="btn-ghost" onclick="document.getElementById('modal2').style.display='none'">Not now</button>
+        <button class="btn-primary" onclick="openSidebar()">Open Clarity →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCREENS 3 & 4 & 5 share the same base —
+     sidebar is a floating overlay
+═══════════════════════════════════════════ -->
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div>
+      <div class="sidebar-logo">✦ CLARITY</div>
+      <div class="sidebar-sub">Your personal financial mentor</div>
+    </div>
+    <div class="sidebar-close" onclick="closeSidebar()">✕</div>
+  </div>
+  <div class="sidebar-body" id="sidebarBody">
+    <!-- Step 1: initial message -->
+    <div id="step1">
+      <div class="chat-bubble">
+        <div class="sender">Clarity</div>
+        Hi Yuval,<br><br>
+        I noticed your portfolio dropped <strong>15%</strong> over the last 3 days, and that you tried to sell several times.<br><br>
+        Before you do anything — I have something important to show you.
+      </div>
+      <div class="chat-bubble" style="margin-top:8px;">
+        <div class="sender">Clarity</div>
+        I found <strong>4 historical cases</strong> very similar to your current situation:
+        <div class="hist-list" style="margin-top:8px;">
+          <div class="hist-item"><span>Sep 2020</span><span class="hi-val">−14% / 5 days</span></div>
+          <div class="hist-item"><span>Mar 2022</span><span class="hi-val">−16% / 4 days</span></div>
+          <div class="hist-item"><span>Oct 2022</span><span class="hi-val">−18% / 6 days</span></div>
+          <div class="hist-item"><span>Aug 2024</span><span class="hi-val">−13% / 3 days</span></div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted);">What happened to those who sold at those points:</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">❌ Those who sold</div>
+        <div class="stat-main" style="color:var(--red);">Lost avg. 23% within 6 months</div>
+        <div class="stat-sub">Sold at the bottom + missed the recovery</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">✅ Those who held</div>
+        <div class="stat-main" style="color:var(--green);">Recovered 100% within 4.5 months</div>
+        <div class="stat-sub">And gained additional 8% by year end</div>
+      </div>
+      <div class="chat-bubble" style="margin-top:4px;">
+        <div class="sender">Clarity</div>
+        Yuval, one question before we continue:<br>
+        <strong>What made you want to sell right now?</strong>
+        <div class="chips" style="margin-top:10px;">
+          <button class="chip" onclick="showStep2()">😰 Fear it will drop further</button>
+          <button class="chip" onclick="showStep2()">💸 I need the cash</button>
+          <button class="chip" onclick="showStep2()">📊 Part of my strategy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: after chip click -->
+    <div id="step2" style="display:none;">
+      <div class="chat-bubble user">Fear it will drop further</div>
+      <div class="chat-bubble">
+        <div class="sender">Clarity</div>
+        That is completely understandable — 15% hurts.<br><br>
+        But Yuval, that fear is exactly what caused most people in the cases I showed you to make their <strong>worst decision</strong>.<br><br>
+        One stat you need to know:
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">📊 Key insight</div>
+        <div class="stat-main" style="color:var(--text);">87% of investors who sold during a 10%+ drop</div>
+        <div class="stat-sub">bought back in after the recovery — at a higher price.</div>
+        <div style="margin-top:6px;font-size:12px;color:var(--red);font-weight:600;">They lost twice.</div>
+      </div>
+      <div class="chat-bubble">
+        <div class="sender">Clarity</div>
+        Your portfolio is well diversified. You have no dangerous concentration.<br><br>
+        <strong>Here is what I suggest:</strong>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:0;">
+          <div class="recommendation">
+            <span class="rec-icon">✋</span>
+            <div class="rec-text">
+              <div>Do nothing for the next 48 hours</div>
+              <div class="rec-sub">Let the data, not the fear, guide the decision</div>
+            </div>
+          </div>
+          <div class="recommendation">
+            <span class="rec-icon">📅</span>
+            <div class="rec-text">
+              <div>Set a check-in point for Thursday</div>
+              <div class="rec-sub">I will prepare a full updated analysis</div>
+            </div>
+          </div>
+          <div class="recommendation">
+            <span class="rec-icon">🔔</span>
+            <div class="rec-text">
+              <div>Alert if the market drops another 5%</div>
+              <div class="rec-sub">Only then reassess the situation together</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-full" onclick="showStep3()">I agree — remind me on Thursday ✓</button>
+    </div>
+
+    <!-- Step 3: confirmation -->
+    <div id="step3" style="display:none;">
+      <div class="confirm-wrap">
+        <div class="confirm-icon">✓</div>
+        <div class="confirm-title">Great, Yuval.</div>
+        <div class="confirm-body">
+          I have set a reminder for <strong>Thursday at 09:00</strong>.<br><br>
+          Until then — if the market drops another 5%, I will send you an updated analysis alert immediately.
+        </div>
+        <div class="confirm-quote">
+          "The hardest decision in investing is doing nothing when everything is red.<br>It is also usually the right one."
+        </div>
+        <div class="confirm-stat">
+          <span>✦</span>
+          <span>Clarity protected ₪46,868 from emotional selling</span>
+        </div>
+        <button class="btn-full green" onclick="goTo(6)" style="margin-top:8px;width:100%;">See Closing ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 6 — Closing Slide
+═══════════════════════════════════════════ -->
+<div id="screen6" class="screen">
+  <div class="closing-wrap">
+    <div style="font-size:13px;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Introducing</div>
+    <div class="closing-logo">✦ CLARITY</div>
+    <div class="closing-tagline">Your personal financial mentor.</div>
+    <div class="closing-lines">
+      <div class="closing-line">Does not beat the market.</div>
+      <div class="closing-line">Stops you from losing to <em>yourself</em>.</div>
+    </div>
+    <button class="closing-cta" onclick="alert('Thanks for your interest! Waitlist coming soon.')">Early Access — Join the Waitlist</button>
+    <div style="margin-top:20px;font-size:11px;color:var(--muted);">← <span style="cursor:pointer;text-decoration:underline;" onclick="restart()">Watch again</span></div>
+  </div>
+</div>
+
+<!-- ── Progress & Dots ── -->
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+<div class="screen-indicator">
+  <div class="dot active" id="dot1"></div>
+  <div class="dot" id="dot2"></div>
+  <div class="dot" id="dot3"></div>
+</div>
+
+<script>
+let currentScreen = 1;
+
+function goTo(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen' + n).classList.add('active');
+  currentScreen = n;
+  updateProgress(n);
+}
+
+function updateProgress(n) {
+  const map = {1:0, 2:33, 6:100};
+  const pct = map[n] !== undefined ? map[n] : 66;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('dot1').classList.toggle('active', n === 1);
+  document.getElementById('dot2').classList.toggle('active', n === 2 || n === 'sidebar');
+  document.getElementById('dot3').classList.toggle('active', n === 6);
+}
+
+function openSidebar() {
+  document.getElementById('modal2') && (document.getElementById('modal2').style.display = 'none');
+  goTo(2);
+  setTimeout(() => {
+    document.getElementById('sidebarOverlay').classList.add('open');
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('dot2').classList.add('active');
+    document.getElementById('progressFill').style.width = '66%';
+  }, 100);
+}
+
+function closeSidebar() {
+  document.getElementById('sidebarOverlay').classList.remove('open');
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+function showStep2() {
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('sidebarBody').scrollTop = 0;
+}
+
+function showStep3() {
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'block';
+  document.getElementById('sidebarBody').scrollTop = 0;
+}
+
+function restart() {
+  closeSidebar();
+  document.getElementById('step1').style.display = 'block';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'none';
+  document.getElementById('modal2') && (document.getElementById('modal2').style.display = 'flex');
+  goTo(1);
+  setTimeout(() => goTo(2), 3000);
+}
+</script>
+</body>
+</html>
